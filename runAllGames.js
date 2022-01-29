@@ -3,6 +3,7 @@
 
 const fs = require('fs');
 const runGame = require("./runGame");
+const prettyprint = require("./prettyprint");
 
 const answersFile = "answers.json"
 
@@ -14,4 +15,7 @@ const occurrences = results.reduce(function (acc, curr) {
     return acc[curr] ? ++acc[curr] : acc[curr] = 1, acc
 }, {});
 
-console.log(JSON.stringify(occurrences))
+//console.log(JSON.stringify(occurrences))
+console.log(occurrences)
+
+prettyprint.graphOutcomes(occurrences);

@@ -4,71 +4,93 @@
 const fs = require('fs');
 
 const answersFile = "answers.json"
+const answers = JSON.parse(fs.readFileSync(answersFile));
+const minLetter = 27; // over entire answer set
 
 function onlyUnique(value, index, self) {
     return self.indexOf(value) === index;
 }
-function countLetters (count, word) {
-    word.split('').forEach((s) => {
-        count[s] ? count[s]++ : count[s] = 1;
-    });
-    return count;
-}
-function wordScore(letterCounts, word) {
-    return word.split('').filter(onlyUnique).reduce((sum, letter) => sum+letterCounts[letter], 0);
-}
-
-function countLetters2D (count, word) {
+function countLetters2D (count, word, skipLocations) {
     for (let i = 0; i < word.length; i++) {
-        count[i][word[i]] ? count[i][word[i]]++ : count[i][word[i]] = 1;
+        if(!skipLocations.includes(i)) {
+            count[i][word[i]] ? count[i][word[i]]++ : count[i][word[i]] = 1;
+        }
     }
     return count;
 }
-function wordScore2D(letterCounts, word) {
+function wordScore2D(letterCounts, word, skipLocations) {
     let score = 0;
     for (let i = 0; i < word.length; i++) {
-        score += letterCounts[i][word[i]];
+        if(!skipLocations.includes(i)) {
+            score += letterCounts[i][word[i]];
+        }
     }
     return score;
 }
 
-function bestWord(choices, ignoreLetters) {
+function calculateLetterCounts2D(choices, presentLetters, skipLocations) {
+    let letterCount2D = [{}, {}, {}, {}, {}];
+    choices.forEach((word) => { countLetters2D(letterCount2D, word, skipLocations); });
+
+    for (var i = 0; i < letterCount2D.length; i++) {
+        if(!skipLocations.includes(i)) {
+            Object.keys(letterCount2D[i]).forEach((letter) => {
+                //if(ignoreLetters && ignoreLetters.includes(letter)) {
+                //    letterCount2D[i][letter] = 0;
+                //} else {
+                    letterCount2D[i][letter] /= minLetter;
+                //}
+            });
+        }
+    }
+    return letterCount2D;
+}
+
+function countLetters (count, word) {
+        word.split('').forEach((s) => { count[s] = (count[s] || 0) + 1; });
+        return count;
+}
+function wordScore(letterCounts, word) {
+        return word.split('').filter(onlyUnique).reduce((sum, letter) => sum+letterCounts[letter], 0);
+}
+function calculateLetterCounts(choices, presentLetters) {
     let letterCount = {};
     choices.forEach((word) => { countLetters(letterCount, word); });
     let minLetter = Object.keys(letterCount).reduce((prevLowest, letter) => {
         return prevLowest < letterCount[letter] ? prevLowest : letterCount[letter];
     });
-    let letterCount2D = [{}, {}, {}, {}, {}];
-    choices.forEach((word) => { countLetters2D(letterCount2D, word); });
-
     Object.keys(letterCount).forEach((letter) => {
-          letterCount[letter] /= minLetter;
+        letterCount[letter] /= minLetter;
     });
-    for (var i = 0; i < letterCount2D.length; i++) {
-        Object.keys(letterCount2D[i]).forEach((letter) => {
-              letterCount2D[i][letter] /= minLetter;
-        });
-    }
-
-    if(ignoreLetters) {
-        ignoreLetters.forEach((letter) => {
+    if(presentLetters) {
+        presentLetters.forEach((letter) => {
             letterCount[letter] = 0;
         });
     }
+    return letterCount;
+}
+
+
+
+function bestWord(choices, presentLetters, skipLocations) {
+
+    //let letterCount = calculateLetterCounts(choices, presentLetters);
+    let letterCount2D = calculateLetterCounts2D(choices, presentLetters, skipLocations);
+
     //console.log(letterCount);
     //console.log(letterCount2D);
-    //console.log(choices);
+    //console.log("choices", choices);
 
-    let bestWord = choices.reduce((bestWord, word) => {
-        //console.log(word, wordScore(letterCount, word));
-        return wordScore(letterCount, bestWord) < wordScore(letterCount, word) ? word : bestWord;
-    }, ""); //starting with "" so it logs each word, it is technically unnecessary though
+    //let bestWord = choices.reduce((bestWord, word) => {
+    //    //console.log(word, wordScore(letterCount, word));
+    //    return wordScore(letterCount, bestWord) < wordScore(letterCount, word) ? word : bestWord;
+    //}, ""); //starting with "" so it logs each word, it is technically unnecessary though
+
     let [bestWord2D,bestWord2DScore] =  choices.reduce((best, word) => {
-        let newScore = wordScore2D(letterCount2D, word)
+        let newScore = wordScore2D(letterCount2D, word, skipLocations)
         //console.log(word, newScore);
         return best[1] < newScore ? [word, newScore] : best;
     }, ["", 0]); //starting with "" so it logs each word, it is technically unnecessary though
-    //console.log([bestWord, bestWord2D]);
     return bestWord2D;
 }
 
@@ -111,7 +133,7 @@ function generateGuess(guesses, evaluations) {
     //console.log("absent", absent);
     //debugger; // node inspect ./runGame.js karma
 
-    let choices = JSON.parse(fs.readFileSync(answersFile));
+    let choices = answers;
     //remove words already chosen
     choices = choices.filter((possibility) => !guesses.includes(possibility));
 
@@ -137,8 +159,13 @@ function generateGuess(guesses, evaluations) {
             return true;
         });
 
-    let lettersThatMustExist = present.concat(correct.filter(n => n));
-    return bestWord(choices, lettersThatMustExist);
+    let correctLocations =[];
+    correct.forEach((e, i) => {
+        if (e != null) correctLocations.push(i);
+    });
+
+    //let lettersThatMustExist = present.concat(correct.filter(n => n));
+    return bestWord(choices, present, correctLocations);
 }
 
 module.exports = { generateGuess };
@@ -152,3 +179,11 @@ if (require.main === module) {
     }
     console.log(generateGuess(JSON.parse(args[0]), JSON.parse(args[1])));
 }
+
+// sort answers by most duplicate letters
+//function letterMaxCount(w) {
+//    let counts = {};
+//    w.split("").forEach((l) => {counts[l] = (counts[l] || 0) + 1; });
+//    return counts[Object.keys(counts).reduce((prev, letter) => { return counts[prev] < counts[letter] ? letter : prev; })];
+//}
+//answers.sort((a, b) => letterMaxCount(a) - letterMaxCount(b))
