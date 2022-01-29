@@ -25,6 +25,9 @@ function runGame(solution) {
         //prettyprint.prettyPrintEvaluation(evaluation, guess);
     }
     //prettyprint.prettyPrintEvaluations(evaluations, guesses);
+    if(guessCount > 8) {
+        console.log(solution, guessCount);
+    }
     return guessCount;
 }
 

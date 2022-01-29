@@ -72,11 +72,17 @@ function calculateLetterCounts(choices, presentLetters) {
 
 
 
-function bestWord(choices, presentLetters, skipLocations) {
+function bestWord(choices, guesses, presentLetters, correctLetters) {
+
+    let correctLocations =[];
+    correctLetters.forEach((e, i) => {
+        if (e != null) correctLocations.push(i);
+    });
 
     //let letterCount = calculateLetterCounts(choices, presentLetters);
-    let letterCount2D = calculateLetterCounts2D(choices, presentLetters, skipLocations);
+    let letterCount2D = calculateLetterCounts2D(choices, presentLetters, correctLocations);
 
+    //console.log(presentLetters);
     //console.log(letterCount);
     //console.log(letterCount2D);
     //console.log("choices", choices);
@@ -86,8 +92,20 @@ function bestWord(choices, presentLetters, skipLocations) {
     //    return wordScore(letterCount, bestWord) < wordScore(letterCount, word) ? word : bestWord;
     //}, ""); //starting with "" so it logs each word, it is technically unnecessary though
 
-    let [bestWord2D,bestWord2DScore] =  choices.reduce((best, word) => {
-        let newScore = wordScore2D(letterCount2D, word, skipLocations)
+
+    // if we have many choices, guess from answers not choices
+    let guessSet;
+    if(choices.length == 1) {
+        return choices[0];
+    }else if (choices.length <= 25) {
+        guessSet = choices;
+    } else {
+        guessSet = answers.filter((w) => !guesses.includes(w));
+    }
+
+
+    let [bestWord2D,bestWord2DScore] =  guessSet.reduce((best, word) => {
+        let newScore = wordScore2D(letterCount2D, word, correctLocations)
         //console.log(word, newScore);
         return best[1] < newScore ? [word, newScore] : best;
     }, ["", 0]); //starting with "" so it logs each word, it is technically unnecessary though
@@ -128,7 +146,14 @@ function generateGuess(guesses, evaluations) {
     absent = absent.filter((letter) => !present.includes(letter));
     absent = absent.filter((letter) => !correct.includes(letter));
 
-    //TODO: handle double letters properly
+    //don't include letters in present if they're in correct
+    //TODO: what do if double?
+    correct.forEach((e, i) => {
+        if (e != null) {
+            present = present.filter((letter) => letter != e);
+        }
+    });
+
     //console.log("present", present);
     //console.log("absent", absent);
     //debugger; // node inspect ./runGame.js karma
@@ -159,13 +184,8 @@ function generateGuess(guesses, evaluations) {
             return true;
         });
 
-    let correctLocations =[];
-    correct.forEach((e, i) => {
-        if (e != null) correctLocations.push(i);
-    });
 
-    //let lettersThatMustExist = present.concat(correct.filter(n => n));
-    return bestWord(choices, present, correctLocations);
+    return bestWord(choices, guesses, present, correct);
 }
 
 module.exports = { generateGuess };

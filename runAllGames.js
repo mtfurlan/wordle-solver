@@ -15,7 +15,14 @@ const occurrences = results.reduce(function (acc, curr) {
     return acc[curr] ? ++acc[curr] : acc[curr] = 1, acc
 }, {});
 
-//console.log(JSON.stringify(occurrences))
 console.log(occurrences)
 
+console.log(JSON.stringify(occurrences))
 prettyprint.graphOutcomes(occurrences);
+
+let mean = 0;
+Object.keys(occurrences).forEach((bucket) => {
+    mean += parseInt(bucket) * occurrences[bucket];
+});
+mean /= answers.length;
+console.log("mean guesses:", mean);
